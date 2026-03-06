@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 
 class TradingDashboard extends StatefulWidget {
@@ -22,10 +23,13 @@ class _TradingDashboardState extends State<TradingDashboard> with SingleTickerPr
   bool _isLoading = false;
   final List<String> _logs = [];
 
+  // TV Link State
+  String _tvAction = 'BUY';
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _addLog("System initialized. Ready to connect to Trading Bot.");
   }
 
@@ -94,6 +98,7 @@ class _TradingDashboardState extends State<TradingDashboard> with SingleTickerPr
           controller: _tabController,
           tabs: const [
             Tab(icon: Icon(Icons.candlestick_chart), text: 'Trade'),
+            Tab(icon: Icon(Icons.link), text: 'TV Link'),
             Tab(icon: Icon(Icons.terminal), text: 'Logs'),
             Tab(icon: Icon(Icons.settings), text: 'Config'),
           ],
@@ -103,6 +108,7 @@ class _TradingDashboardState extends State<TradingDashboard> with SingleTickerPr
         controller: _tabController,
         children: [
           _buildTradeTab(),
+          _buildTVLinkTab(),
           _buildLogsTab(),
           _buildConfigTab(),
         ],
@@ -227,6 +233,174 @@ class _TradingDashboardState extends State<TradingDashboard> with SingleTickerPr
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTVLinkTab() {
+    // Generate the JSON payload based on current inputs
+    String jsonPayload = '''
+{
+  "symbol": "${_symbolController.text}",
+  "token": "${_tokenController.text}",
+  "exchange": "$_selectedExchange",
+  "action": "$_tvAction"
+}''';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "TradingView Alert Setup",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Copy these details into your TradingView Alert settings to automate trades.",
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          
+          // Webhook URL Section
+          const Text("1. Webhook URL", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[800]!),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _webhookUrlController.text,
+                    style: const TextStyle(fontFamily: 'Courier', fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 20),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _webhookUrlController.text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Webhook URL copied!')),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // JSON Payload Section
+          const Text("2. Alert Message (JSON)", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+          const SizedBox(height: 8),
+          
+          // Configuration for JSON
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Configure Payload:", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _tvAction,
+                          decoration: const InputDecoration(
+                            labelText: 'Alert Action',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: ['BUY', 'SELL', '{{strategy.order.action}}'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          onChanged: (val) => setState(() => _tvAction = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Note: Ensure Symbol and Token match the 'Trade' tab settings.",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[800]!),
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 40.0, top: 8.0),
+                  child: Text(
+                    jsonPayload,
+                    style: const TextStyle(fontFamily: 'Courier', fontSize: 14, color: Colors.greenAccent),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: IconButton(
+                    icon: const Icon(Icons.copy, size: 20),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: jsonPayload));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('JSON Payload copied!')),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Instructions
+          const ExpansionTile(
+            title: Text("How to set up in TradingView"),
+            children: [
+              ListTile(
+                leading: CircleAvatar(child: Text("1"), radius: 12),
+                title: Text("Open a Chart in TradingView."),
+              ),
+              ListTile(
+                leading: CircleAvatar(child: Text("2"), radius: 12),
+                title: Text("Click 'Alert' (Alt+A) on the top toolbar."),
+              ),
+              ListTile(
+                leading: CircleAvatar(child: Text("3"), radius: 12),
+                title: Text("In 'Notifications' tab, check 'Webhook URL' and paste the URL from above."),
+              ),
+              ListTile(
+                leading: CircleAvatar(child: Text("4"), radius: 12),
+                title: Text("In 'Settings' tab, under 'Message', paste the JSON code from above."),
+              ),
+              ListTile(
+                leading: CircleAvatar(child: Text("5"), radius: 12),
+                title: Text("Click 'Create'. Your bot is now linked!"),
+              ),
+            ],
           ),
         ],
       ),
